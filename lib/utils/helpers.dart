@@ -1,24 +1,40 @@
 import 'package:latlong2/latlong.dart';
-import 'package:buscaendereco/models/stop.dart';
+import 'package:flutter_map/flutter_map.dart';
+import 'dart:math';
 
 class Helpers {
-  static Stop findNearestStop(LatLng location, List<Stop> stops) {
-    Stop nearestStop = stops.first;
-    double minDistance = _calculateDistance(location, nearestStop.location);
+  static Marker findNearestMarker(LatLng location, List<Marker> markers) {
+    Marker? nearestMarker;
+    double minDistance = double.infinity;
 
-    for (Stop stop in stops) {
-      double distance = _calculateDistance(location, stop.location);
+    for (var marker in markers) {
+      final distance = distanceBetween(location, marker.point);
       if (distance < minDistance) {
-        nearestStop = stop;
         minDistance = distance;
+        nearestMarker = marker;
       }
     }
 
-    return nearestStop;
+    return nearestMarker!;
   }
 
-  static double _calculateDistance(LatLng start, LatLng end) {
-    final Distance distance = Distance();
-    return distance.as(LengthUnit.Meter, start, end);
+  static double distanceBetween(LatLng latLng1, LatLng latLng2) {
+    final double radius = 6371; // Radius of the earth in km
+    final double dLat = latLng2.latitudeInRad - latLng1.latitudeInRad;
+    final double dLon = latLng2.longitudeInRad - latLng1.longitudeInRad;
+    final double a = sin(dLat / 2) * sin(dLat / 2) +
+        cos(latLng1.latitudeInRad) *
+            cos(latLng2.latitudeInRad) *
+            sin(dLon / 2) *
+            sin(dLon / 2);
+    final double c = 2 * atan2(sqrt(a), sqrt(1 - a));
+    final double distance = radius * c;
+
+    return distance;
   }
+}
+
+extension on LatLng {
+  double get latitudeInRad => latitude * pi / 180;
+  double get longitudeInRad => longitude * pi / 180;
 }

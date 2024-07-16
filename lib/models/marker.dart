@@ -1,21 +1,18 @@
-import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:latlong2/latlong.dart';
-import 'package:buscaendereco/models/stop.dart';
+import 'package:flutter/material.dart';
 import 'package:buscaendereco/models/address.dart';
 
 class MarkerService {
-  Marker createMarkerFromStop(Stop stop) {
+  Marker createMarkerFromStop(Marker stop) {
     return Marker(
       width: 80.0,
       height: 80.0,
-      point: stop.location,
-      builder: (ctx) => Container(
-        child: Icon(
-          Icons.location_on,
-          color: Colors.red,
-          size: 40.0,
-        ),
+      point: stop.point,
+      builder: (ctx) => Icon(
+        Icons.location_on,
+        color: Colors.green,
+        size: 40.0,
       ),
     );
   }
@@ -25,12 +22,10 @@ class MarkerService {
       width: 80.0,
       height: 80.0,
       point: LatLng(address.lat, address.lon),
-      builder: (ctx) => Container(
-        child: Icon(
-          Icons.location_on,
-          color: Colors.blue,
-          size: 40.0,
-        ),
+      builder: (ctx) => Icon(
+        Icons.location_on,
+        color: Colors.blue,
+        size: 40.0,
       ),
     );
   }

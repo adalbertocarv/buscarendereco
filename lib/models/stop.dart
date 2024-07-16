@@ -1,16 +1,32 @@
 import 'package:latlong2/latlong.dart';
+import 'package:http/http.dart' as http;
+import 'dart:convert';
+import 'package:flutter/material.dart';
+import 'package:flutter_map/flutter_map.dart';
 
-class Stop {
-  final String name;
-  final LatLng location;
+class StopService {
+  static const String _url = 'https://www.sistemas.dftrans.df.gov.br/parada/geo/paradas/wgs';
 
-  Stop({required this.name, required this.location});
+  static Future<List<Marker>> fetchMarkers() async {
+    final response = await http.get(Uri.parse(_url));
+
+    if (response.statusCode == 200) {
+      final data = json.decode(response.body);
+      return (data['features'] as List).map((feature) {
+        final coordinates = feature['geometry']['coordinates'];
+        return Marker(
+          point: LatLng(coordinates[1], coordinates[0]),
+          width: 50,
+          height: 50,
+          builder: (ctx) => Icon(
+            Icons.location_pin,
+            color: Colors.red,
+            size: 40.0,
+          ),
+        );
+      }).toList();
+    } else {
+      throw Exception('Failed to load markers');
+    }
+  }
 }
-
-// Definindo algumas paradas de exemplo em Brasília
-List<Stop> stops = [
-  Stop(name: 'Parada 1', location: LatLng(-15.7801, -47.9292)),
-  Stop(name: 'Parada 2', location: LatLng(-15.7942, -47.8822)),
-  Stop(name: 'Parada 3', location: LatLng(-15.8087, -47.8756)),
-  // Adicione mais paradas conforme necessário
-];

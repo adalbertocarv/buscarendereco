@@ -27,13 +27,11 @@ class MyHomePage extends StatelessWidget {
       MaterialPageRoute(builder: (context) => SearchAddressScreen()),
     );
 
-    if (result != null) {
-      Navigator.push(
-        context,
-        MaterialPageRoute(builder: (context) => MapScreen(destination: result)),
-      );
+    Navigator.push(
+      context,
+      MaterialPageRoute(builder: (context) => MapScreen(destination: result)),
+    );
     }
-  }
 
   @override
   Widget build(BuildContext context) {
