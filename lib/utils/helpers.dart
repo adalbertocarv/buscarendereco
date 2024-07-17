@@ -1,21 +1,21 @@
 import 'package:latlong2/latlong.dart';
-import 'package:flutter_map/flutter_map.dart';
 import 'dart:math';
+import 'package:buscareferencia/models/stop.dart';
 
 class Helpers {
-  static Marker findNearestMarker(LatLng location, List<Marker> markers) {
-    Marker? nearestMarker;
+  static Stop findNearestStop(LatLng location, List<Stop> stops) {
+    Stop? nearestStop;
     double minDistance = double.infinity;
 
-    for (var marker in markers) {
-      final distance = distanceBetween(location, marker.point);
+    for (var stop in stops) {
+      final distance = distanceBetween(location, stop.point);
       if (distance < minDistance) {
         minDistance = distance;
-        nearestMarker = marker;
+        nearestStop = stop;
       }
     }
 
-    return nearestMarker!;
+    return nearestStop!;
   }
 
   static double distanceBetween(LatLng latLng1, LatLng latLng2) {

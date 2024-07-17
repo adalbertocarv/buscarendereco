@@ -1,13 +1,14 @@
 // ignore_for_file: unused_field
+
 import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:latlong2/latlong.dart';
-import 'package:buscaendereco/services/geolocator_service.dart';
-import 'package:buscaendereco/models/marker.dart';
-import 'package:buscaendereco/utils/helpers.dart';
-import 'package:buscaendereco/models/stop.dart';
-import 'package:buscaendereco/models/address.dart';
-
+import 'package:buscareferencia/services/geolocator_service.dart';
+import 'package:buscareferencia/models/marker.dart';
+import 'package:buscareferencia/utils/helpers.dart';
+import 'package:buscareferencia/models/stop.dart';
+import 'package:buscareferencia/models/address.dart';
+import 'package:buscareferencia/screens/bus_line_screen.dart';
 
 class MapScreen extends StatefulWidget {
   final Address destination;
@@ -21,13 +22,16 @@ class MapScreen extends StatefulWidget {
 class _MapScreenState extends State<MapScreen> {
   LatLng _userLocation = LatLng(0, 0);
   List<Marker> _markers = [];
+  List<Stop> _stops = [];
+  Stop? _nearestStartStop;
+  Stop? _nearestEndStop;
   final MarkerService _markerService = MarkerService();
 
   @override
   void initState() {
     super.initState();
     _setUserLocation();
-    _fetchMarkers();
+    _fetchStops();
   }
 
   void _setUserLocation() async {
@@ -36,51 +40,68 @@ class _MapScreenState extends State<MapScreen> {
   }
 
   void _setNearestStops() async {
-    final markers = await StopService.fetchMarkers();
-    final nearestStartMarker = Helpers.findNearestMarker(_userLocation, markers);
-    final nearestEndMarker = Helpers.findNearestMarker(LatLng(widget.destination.lat, widget.destination.lon), markers);
-
-    // Create a green marker for the user's location
-    Marker userLocationMarker = Marker(
-      width: 80.0,
-      height: 80.0,
-      point: _userLocation,
-      builder: (ctx) => Icon(
-        Icons.location_on,
-        color: Colors.green, // Green color for user's location
-        size: 40.0,
-      ),
-    );
-
-    // Create a blue marker for the destination address
-    Marker destinationMarker = Marker(
-      width: 80.0,
-      height: 80.0,
-      point: LatLng(widget.destination.lat, widget.destination.lon),
-      builder: (ctx) => Icon(
-        Icons.location_on,
-        color: Colors.blue, // Blue color for destination address
-        size: 40.0,
-      ),
-    );
-
-    setState(() {
-      _markers = [
-        userLocationMarker, // Add the user's location marker
-        destinationMarker, // Add the destination marker
-        ...markers, // Add the other markers
-      ];
-    });
-  }
-
-  void _fetchMarkers() async {
     try {
-      final markers = await StopService.fetchMarkers();
+      final stops = await StopService.fetchStops();
+      final userLocation = await GeolocatorService.getCurrentLocation();
+      final destination = widget.destination;
+
+      // Calcula a parada mais próxima do usuário
+      final nearestStartStop = Helpers.findNearestStop(userLocation, stops);
+
+      // Calcula a parada mais próxima do endereço selecionado
+      final nearestEndStop = Helpers.findNearestStop(LatLng(destination.lat, destination.lon), stops);
+
+      // Printa no console as paradas mais próximas
+      print('Parada mais próxima do usuário: ${nearestStartStop.point}');
+      print('Parada mais próxima do endereço selecionado: ${nearestEndStop.point}');
+
+      // Cria um marcador verde para a localização do usuário
+      Marker userLocationMarker = _markerService.createMarkerFromLatLng(userLocation, Colors.green);
+
+      // Cria um marcador azul para o endereço de destino
+      Marker destinationMarker = _markerService.createMarkerFromLatLng(LatLng(widget.destination.lat, widget.destination.lon), Colors.blue);
+
       setState(() {
-        _markers.addAll(markers);
+        _stops = stops;
+        _markers = [
+          userLocationMarker, // Adiciona o marcador da localização do usuário
+          destinationMarker, // Adiciona o marcador do destino
+          ...stops.map((stop) => _markerService.createMarkerFromStop(stop)), // Adiciona os marcadores das paradas
+        ];
+        _nearestStartStop = nearestStartStop;
+        _nearestEndStop = nearestEndStop;
       });
     } catch (e) {
-      print('Failed to fetch markers: $e');
+      print('Erro ao definir as paradas mais próximas: $e');
+    }
+  }
+
+  void _fetchStops() async {
+    try {
+      final stops = await StopService.fetchStops();
+      setState(() {
+        _stops = stops;
+        _markers.addAll(stops.map((stop) => _markerService.createMarkerFromStop(stop)));
+      });
+    } catch (e) {
+      print('falha para buscar paradas: $e');
+    }
+  }
+
+  void _navigateToBusLines() {
+    if (_nearestStartStop != null && _nearestEndStop != null) {
+      Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (context) => BusLinesScreen(
+            startStopCode: _nearestStartStop!.codDftrans,
+            endStopCode: _nearestEndStop!.codDftrans,
+          ),
+        ),
+      );
+    } else {
+      // Handle the case where nearest stops are not available
+      print('Paradas mais próximas não disponíveis');
     }
   }
 
@@ -88,7 +109,7 @@ class _MapScreenState extends State<MapScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Text('Map'),
+        title: Text('Mapa'),
       ),
       body: FlutterMap(
         options: MapOptions(
@@ -103,6 +124,10 @@ class _MapScreenState extends State<MapScreen> {
           ),
           MarkerLayer(
             markers: _markers,
+          ),
+          ElevatedButton(
+            onPressed: _navigateToBusLines,
+            child: Text('Ver Linhas de Ônibus'),
           ),
         ],
       ),

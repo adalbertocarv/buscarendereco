@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
-import 'package:buscaendereco/services/api_service.dart';
-import 'package:buscaendereco/models/address.dart';
+import 'package:buscareferencia/services/api_service.dart';
+import 'package:buscareferencia/models/address.dart';
 
 class SearchAddressScreen extends StatefulWidget {
   @override

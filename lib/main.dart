@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
-import 'package:buscaendereco/screens/search_address_screen.dart';
-import 'package:buscaendereco/screens/map_screen.dart';
-import 'package:buscaendereco/models/address.dart';
+import 'package:buscareferencia/screens/search_address_screen.dart';
+import 'package:buscareferencia/screens/map_screen.dart';
+import 'package:buscareferencia/models/address.dart';
 
 void main() {
   runApp(MyApp());
@@ -11,7 +11,7 @@ class MyApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'Flutter Demo',
+      title: 'Busca Referência',
       theme: ThemeData(
         primarySwatch: Colors.blue,
       ),
@@ -31,7 +31,7 @@ class MyHomePage extends StatelessWidget {
       context,
       MaterialPageRoute(builder: (context) => MapScreen(destination: result)),
     );
-    }
+  }
 
   @override
   Widget build(BuildContext context) {
