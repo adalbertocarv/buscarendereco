@@ -19,7 +19,7 @@ class Helpers {
   }
 
   static double distanceBetween(LatLng latLng1, LatLng latLng2) {
-    final double radius = 6371; // Radius of the earth in km
+    final double radius = 6371; // Raios da terra em KM
     final double dLat = latLng2.latitudeInRad - latLng1.latitudeInRad;
     final double dLon = latLng2.longitudeInRad - latLng1.longitudeInRad;
     final double a = sin(dLat / 2) * sin(dLat / 2) +
