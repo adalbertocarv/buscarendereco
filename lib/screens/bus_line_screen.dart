@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:http/http.dart' as http;
-import 'dart:convert';
+import '../services/bus_line_service.dart';
 import '../models/bus_line.dart';
 
 class BusLinesScreen extends StatefulWidget {
@@ -15,25 +14,19 @@ class BusLinesScreen extends StatefulWidget {
 
 class _BusLinesScreenState extends State<BusLinesScreen> {
   List<BusLine> _busLines = [];
-
-  Future<void> _fetchBusLines() async {
-    final response = await http.get(Uri.parse('https://www.sistemas.dftrans.df.gov.br/linha/paradacod/${widget.startStopCode}/paradacod/${widget.endStopCode}'));
-
-    if (response.statusCode == 200) {
-      final jsonData = jsonDecode(response.body);
-      final busLines = (jsonData as List).map((json) => BusLine.fromJson(json)).toList();
-      setState(() {
-        _busLines = busLines;
-      });
-    } else {
-      throw Exception('Falha para carregar linhas de ônibus');
-    }
-  }
+  final BusLineService _busLineService = BusLineService();
 
   @override
   void initState() {
     super.initState();
     _fetchBusLines();
+  }
+
+  Future<void> _fetchBusLines() async {
+    final busLines = await _busLineService.getBusLines(widget.startStopCode, widget.endStopCode);
+    setState(() {
+      _busLines = busLines;
+    });
   }
 
   @override
