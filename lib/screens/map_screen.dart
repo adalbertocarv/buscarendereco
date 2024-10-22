@@ -1,13 +1,17 @@
+import 'dart:convert';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart';
+import 'package:flutter_map_marker_cluster/flutter_map_marker_cluster.dart';
 import 'package:latlong2/latlong.dart';
 import 'package:buscareferencia/services/geolocator_service.dart';
 import 'package:buscareferencia/models/marker.dart';
 import 'package:buscareferencia/utils/helpers.dart';
 import 'package:buscareferencia/models/stop.dart';
 import 'package:buscareferencia/models/address.dart';
-import 'package:buscareferencia/screens/bus_line_screen.dart';
-import 'package:flutter_map_marker_cluster/flutter_map_marker_cluster.dart';
+
+import '../models/bus_line.dart';
+import '../services/api_service.dart';
 
 class MapScreen extends StatefulWidget {
   final Address destination;
@@ -18,90 +22,169 @@ class MapScreen extends StatefulWidget {
   _MapScreenState createState() => _MapScreenState();
 }
 
-// localização do usuário
 class _MapScreenState extends State<MapScreen> {
   LatLng _userLocation = LatLng(0, 0);
   List<Marker> _markers = [];
-  List<Stop> _stops = [];
+  List<Polyline> _polylines = []; // Para as LineStrings (rotas)
   Stop? _nearestStartStop;
   Stop? _nearestEndStop;
+  List<dynamic> _routes = []; // Armazena as rotas buscadas
   final MarkerService _markerService = MarkerService();
 
   @override
   void initState() {
     super.initState();
     _setUserLocation();
-    _fetchStops();
   }
 
+  Color _getLineColor(int index) {
+    // Define cores diferentes com base no índice da linha ou outra lógica
+    if (index == 0) {
+      return Colors.red; // Cor da primeira linha
+    } else if (index == 1) {
+      return Colors.green; // Cor da segunda linha
+    }
+    return Colors.blue; // Cor padrão para outras linhas
+  }
+
+
+  /// Busca a localização atual do usuário
   void _setUserLocation() async {
+    print('Obtendo localização do usuário...');
     _userLocation = await GeolocatorService.getCurrentLocation();
-    _setNearestStops();
+    print('Localização do usuário obtida: $_userLocation');
+    _setNearestStops(); // Chama a função para buscar as paradas mais próximas
   }
 
+  /// Busca as paradas mais próximas da localização do usuário e do destino
   void _setNearestStops() async {
     try {
       final stops = await StopService.fetchStops();
-      final userLocation = await GeolocatorService.getCurrentLocation();
+      print('Paradas carregadas: ${stops.length}');
+
       final destination = widget.destination;
 
-      // Calcula a parada mais próxima do usuário
-      final nearestStartStop = Helpers.findNearestStop(userLocation, stops);
-
-      // Calcula a parada mais próxima do endereço selecionado
+      // Calcular as paradas mais próximas (origem e destino)
+      final nearestStartStop = Helpers.findNearestStop(_userLocation, stops);
       final nearestEndStop = Helpers.findNearestStop(LatLng(destination.lat, destination.lon), stops);
-
-      // Printa no console as paradas mais próximas
-      print('Parada mais próxima do usuário: ${nearestStartStop.point}');
-      print('Parada mais próxima do endereço selecionado: ${nearestEndStop.point}');
-
-      // Cria um marcador verde para a localização do usuário
-      Marker userLocationMarker = _markerService.createMarkerFromLatLng(userLocation, Colors.green);
-
-      // Cria um marcador azul para o endereço de destino
-      Marker destinationMarker = _markerService.createMarkerFromLatLng(LatLng(widget.destination.lat, widget.destination.lon), Colors.blue);
+      print('Parada mais próxima do usuário: ${nearestStartStop.codDftrans}');
+      print('Parada mais próxima do destino: ${nearestEndStop.codDftrans}');
 
       setState(() {
-        _stops = stops;
-        _markers = [
-          userLocationMarker, // Adiciona o marcador da localização do usuário
-          destinationMarker, // Adiciona o marcador do destino
-          ...stops.map((stop) => _markerService.createMarkerFromStop(stop)), // Adiciona os marcadores das paradas
-        ];
         _nearestStartStop = nearestStartStop;
         _nearestEndStop = nearestEndStop;
       });
+
+      // Buscar as rotas entre as paradas mais próximas
+      if (_nearestStartStop != null && _nearestEndStop != null) {
+        print('Buscando rotas entre ${_nearestStartStop!.codDftrans} e ${_nearestEndStop!.codDftrans}');
+        await _fetchRoutes(_nearestStartStop!.codDftrans, _nearestEndStop!.codDftrans);
+      }
     } catch (e) {
       print('Erro ao definir as paradas mais próximas: $e');
     }
   }
 
-  void _fetchStops() async {
+  /// Busca as rotas entre a parada de origem e a parada de destino
+  Future<void> _fetchRoutes(int paradaOrigem, int paradaDestino) async {
     try {
-      final stops = await StopService.fetchStops();
+      // Buscar as rotas da API
+      final routes = await ApiService.fetchRoutes(paradaOrigem, paradaDestino);
+      print('Rotas encontradas: ${routes.length}');
       setState(() {
-        _stops = stops;
-        _markers.addAll(stops.map((stop) => _markerService.createMarkerFromStop(stop)));
+        _routes = routes;
       });
+
+      // Extrair as linhas das rotas e buscar as LineStrings para cada uma
+      for (var i = 0; i < routes.length; i++) {
+        String linha = routes[i]['linha'];
+        await _fetchLineGeoJson(linha, i);  // Passa o índice da linha
+      }
+
+
+      // Extrair os códigos codDftrans das paradas da rota
+      List<int> codDftransList = [paradaOrigem, paradaDestino];
+      if (routes.length > 1) {
+        // Adiciona parada de integração, se existir
+        codDftransList.insert(1, routes[0]['parada_destino']); // Parada de integração
+        print('Parada de integração encontrada: ${routes[0]['parada_destino']}');
+      }
+
+      // Buscar detalhes das paradas usando os codDftrans da rota
+      await _fetchStops(codDftransList);
     } catch (e) {
-      print('falha para buscar paradas: $e');
+      print('Erro ao buscar rotas: $e');
     }
   }
 
-  void _navigateToBusLines() {
-    if (_nearestStartStop != null && _nearestEndStop != null) {
-      Navigator.push(
-        context,
-        MaterialPageRoute(
-          builder: (context) => BusLinesScreen(
-            startStopCode: _nearestStartStop!.codDftrans,
-            endStopCode: _nearestEndStop!.codDftrans,
+  /// Busca a LineString GEOJSON para cada linha de ônibus
+  Future<void> _fetchLineGeoJson(String linha, int index) async {
+    try {
+      final lineDetails = await ApiService.fetchLineGeoJson(linha);
+      print('LineString carregada para a linha $linha');
+
+      // Criar polylines para as LineStrings retornadas
+      for (var feature in lineDetails) {
+        if (feature['geometry']['type'] == 'LineString') {
+          final coords = feature['geometry']['coordinates'];
+
+          // Converta as coordenadas para LatLng
+          final polylinePoints = coords.map<LatLng>((point) {
+            return LatLng(point[1], point[0]);
+          }).toList();
+
+          // Adiciona a polyline ao mapa com uma cor específica
+          setState(() {
+            _polylines.add(Polyline(
+              points: polylinePoints,
+              strokeWidth: 4.0,
+              color: _getLineColor(index),  // Define a cor da linha com base no índice
+            ));
+          });
+        }
+      }
+    } catch (e) {
+      print('Erro ao buscar LineString para a linha $linha: $e');
+    }
+  }
+
+
+  /// Busca os detalhes das paradas usando os codDftrans retornados pelas rotas
+  Future<void> _fetchStops(List<int> codDftransList) async {
+    try {
+      // Limpa os marcadores existentes antes de adicionar os novos
+      setState(() {
+        _markers.clear();  // Limpa todos os marcadores anteriores
+      });
+
+      // Buscar os detalhes das paradas da API
+      final stopDetails = await ApiService.fetchStops(codDftransList);
+      print('Paradas detalhadas carregadas: ${stopDetails.length}');
+
+      // Criar novos marcadores para as paradas retornadas pela API
+      final newMarkers = stopDetails.map((feature) {
+        final coords = feature['geometry']['coordinates'];
+        final stopLatLng = LatLng(coords[1], coords[0]);
+
+        // Cria marcador com ícone de ônibus para as paradas
+        return Marker(
+          width: 80.0,
+          height: 80.0,
+          point: stopLatLng,
+          builder: (ctx) => Icon(
+            Icons.directions_bus,  // Ícone de ônibus
+            color: Colors.orange,
+            size: 40.0,
           ),
-        ),
-      );
-    } else {
-      // Handle the case where nearest stops are not available
-      print('Paradas mais próximas não disponíveis');
+        );
+      }).toList();
+
+      // Atualiza o estado com os novos marcadores
+      setState(() {
+        _markers = newMarkers;  // Adiciona os novos marcadores
+      });
+    } catch (e) {
+      print('Erro ao buscar detalhes das paradas: $e');
     }
   }
 
@@ -114,38 +197,19 @@ class _MapScreenState extends State<MapScreen> {
       body: FlutterMap(
         options: MapOptions(
           center: LatLng(-15.78869450034934, -47.88936481492598),
-          //center: _userLocation,
           zoom: 14.0,
+          interactiveFlags: InteractiveFlag.all & ~InteractiveFlag.rotate,
         ),
         children: [
           TileLayer(
             urlTemplate: "https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png",
             subdomains: ['a', 'b', 'c'],
           ),
-          // Substituir MarkerLayer por MarkerClusterLayerWidget para clustering
-          MarkerClusterLayerWidget(
-            options: MarkerClusterLayerOptions(
-              maxClusterRadius: 70,
-              size: Size(50, 50),
-              markers: _markers,
-              builder: (context, markers) {
-                return Container(
-                  alignment: Alignment.center,
-                  decoration: BoxDecoration(
-                    color: Colors.blue,
-                    shape: BoxShape.circle,
-                  ),
-                  child: Text(
-                    markers.length.toString(),
-                    style: TextStyle(color: Colors.white),
-                  ),
-                );
-              },
-            ),
+          MarkerLayer(
+            markers: _markers,  // Exibe os marcadores das paradas
           ),
-          ElevatedButton(
-            onPressed: _navigateToBusLines,
-            child: Text('Ver Linhas de Ônibus'),
+          PolylineLayer(
+            polylines: _polylines,  // Exibe as polylines para as LineStrings
           ),
         ],
       ),

@@ -26,14 +26,15 @@ class StopService {
 
 class Stop {
   final LatLng point;
-  final String codDftrans;
+  final int codDftrans;  // Definido como int
 
   Stop({required this.point, required this.codDftrans});
 
+  // Construtor de fábrica para criar um objeto Stop a partir de JSON
   factory Stop.fromJson(Map<String, dynamic> json) {
     return Stop(
       point: LatLng(json['geometry']['coordinates'][1], json['geometry']['coordinates'][0]),
-      codDftrans: json['properties']['codDftrans'],
+      codDftrans: int.parse(json['properties']['codDftrans']),  // Converte de String para int
     );
   }
 }
