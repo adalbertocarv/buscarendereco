@@ -1,8 +1,5 @@
-import 'dart:convert';
-
 import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart';
-import 'package:flutter_map_marker_cluster/flutter_map_marker_cluster.dart';
 import 'package:latlong2/latlong.dart';
 import 'package:buscareferencia/services/geolocator_service.dart';
 import 'package:buscareferencia/models/marker.dart';
@@ -10,7 +7,6 @@ import 'package:buscareferencia/utils/helpers.dart';
 import 'package:buscareferencia/models/stop.dart';
 import 'package:buscareferencia/models/address.dart';
 
-import '../models/bus_line.dart';
 import '../services/api_service.dart';
 
 class MapScreen extends StatefulWidget {

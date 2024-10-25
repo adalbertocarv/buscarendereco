@@ -18,7 +18,7 @@ class ApiService {
     final response = await http.get(Uri.parse('https://www.sistemas.dftrans.df.gov.br/percurso/linha/numero/$linha/WGS'));
     print('Requisição fetchLineGeoJson para linha $linha feita com status: ${response.statusCode}');
     if (response.statusCode == 200) {
-      print('Resposta da API fetchLineGeoJson para linha $linha: ${response.body}');
+      print('Resposta da API fetchLineGeoJson para linha $linha');
       return json.decode(response.body)['features']; // Retorna a feature LineString
     } else {
       throw Exception('Falha ao buscar linha $linha');
@@ -28,7 +28,7 @@ class ApiService {
   // Busca a rota entre paradas de origem e destino
   static Future<List<dynamic>> fetchRoutes(int paradaOrigem, int paradaDestino) async {
     try {
-      final response = await http.get(Uri.parse('https://746a-2804-7f74-b20-ae00-824-3af5-e3fa-4cd7.ngrok-free.app/rotas/?origem=$paradaOrigem&destino=$paradaDestino'));
+      final response = await http.get(Uri.parse('http://127.0.0.1:8000/rotas/?origem=$paradaOrigem&destino=$paradaDestino'));
       print('Requisição fetchRoutes feita com status: ${response.statusCode}');
       if (response.statusCode == 200) {
         print('Resposta da API fetchRoutes: ${response.body}');
@@ -47,7 +47,7 @@ class ApiService {
   static Future<List<dynamic>> fetchStops(List<int> codDftransList) async {
     try {
       final codDftransParams = codDftransList.map((e) => "codDftrans=$e").join('&');
-      final response = await http.get(Uri.parse('https://746a-2804-7f74-b20-ae00-824-3af5-e3fa-4cd7.ngrok-free.app/paradas/geo/?$codDftransParams'));
+      final response = await http.get(Uri.parse('http://127.0.0.1:8000/paradas/geo/?$codDftransParams'));
       print('Requisição fetchStops feita com status: ${response.statusCode}');
       if (response.statusCode == 200) {
         print('Resposta da API fetchStops: ${response.body}');
